@@ -43,8 +43,8 @@ Stmt: ast::Stmt = {
 };
 
 Assignment: ast::Assignment = {
-    <call:Call> AssignOp <expr:Expr> ";" => {
-        ast::Assignment { call, expr }
+    <call:Call> <op:AssignOp> <expr:Expr> ";" => {
+        ast::Assignment { call, op, expr }
     }
 };
 
@@ -71,21 +71,21 @@ Expr: ast::Expr = {
 LogicOr: ast::LogicOr = {
     LogicAnd => ast::LogicOr::A(<>),
     <left:LogicOr> "||" <right:LogicAnd> => {
-        ast::LogicOr::B { left, right }
+        ast::LogicOr::B { left: Box::new(left), right }
     }
 };
 
 LogicAnd: ast::LogicAnd = {
     Cmp => ast::LogicAnd::A(<>),
     <left:LogicAnd> "&&" <right:Cmp> => {
-        ast::LogicAnd::B { left, right }
+        ast::LogicAnd::B { left: Box::new(left), right }
     }
 };
 
 Cmp: ast::Cmp = {
-    BitOr => ast::BitOr::A(<>),
+    BitOr => ast::Cmp::A(<>),
     <left:Cmp> <op:CmpOp> <right:BitOr> => {
-        ast::Cmp::B { left, op, right }
+        ast::Cmp::B { left: Box::new(left), op, right }
     }  
 };
 
@@ -101,28 +101,28 @@ CmpOp: ast::CmpOp = {
 BitOr: ast::BitOr = {
     BitXor => ast::BitOr::A(<>),
     <left:BitOr> "|" <right:BitXor> => {
-        ast::BitOr::B { left, right }
+        ast::BitOr::B { left: Box::new(left), right }
     }
 };
 
 BitXor: ast::BitXor = {
     BitAnd => ast::BitXor::A(<>),
     <left:BitXor> "^" <right:BitAnd> => {
-        ast::BitXor::B { left, right }
+        ast::BitXor::B { left: Box::new(left), right }
     }
 };
 
 BitAnd: ast::BitAnd = {
     Shift => ast::BitAnd::A(<>),
     <left:BitAnd> "&" <right:Shift> => {
-        ast::BitAnd::B { left, right }
+        ast::BitAnd::B { left: Box::new(left), right }
     }
 };
 
 Shift: ast::Shift = {
     Term => ast::Shift::A(<>),
     <left:Shift> <op:ShiftOp> <right:Term> => {
-        ast::Shift::B { left, op, right }
+        ast::Shift::B { left: Box::new(left), op, right }
     }
 };
 
@@ -134,7 +134,7 @@ ShiftOp: ast::ShiftOp = {
 Term: ast::Term = {
     Factor => ast::Term::A(<>),
     <left:Term> <op:TermOp> <right:Factor> => {
-        ast::Term::B { left, op, right }
+        ast::Term::B { left: Box::new(left), op, right }
     }
 };
 
@@ -146,7 +146,7 @@ TermOp: ast::TermOp = {
 Factor: ast::Factor = {
     TypeCast => ast::Factor::A(<>),
     <left:Factor> <op:FactorOp> <right:TypeCast> => {
-        ast::Factor::B { left, op, right }
+        ast::Factor::B { left: Box::new(left), op, right }
     }
 };
 
@@ -159,7 +159,7 @@ FactorOp: ast::FactorOp = {
 TypeCast: ast::TypeCast = {
     Unary => ast::TypeCast::A(<>),
     <left:TypeCast> "as" <type_name:TypeName> => {
-        ast::TypeCast::B { left, type_name }
+        ast::TypeCast::B { left: Box::new(left), type_name }
     }  
 };
 
@@ -177,7 +177,7 @@ TypeName: ast::TypeName = {
 Unary: ast::Unary = {
     Call => ast::Unary::A(<>),  
     <op:UnaryOp> <unary:Unary> => {
-        ast::Unary { op, unary }
+        ast::Unary::B { op, unary: Box::new(unary) }
     }
 };
 
@@ -193,14 +193,14 @@ Call: ast::Call = {
 };
 
 CallPart: ast::CallPart = {
-    "." Ident => ast::CallPart::Ident(<>),
-    "[" Expr "]" => ast::CallPart::Brkts(<>),
-    "(" Comma<Expr> ")" => ast::CallPart::FunCall(<>),
+    "." <Ident> => ast::CallPart::Ident(<>),
+    "[" <Expr> "]" => ast::CallPart::Brkts(Box::new(<>)),
+    "(" <Comma<Expr>> ")" => ast::CallPart::FunCall(<>),
     "?" => ast::CallPart::QMark,
 };
 
 Primary: ast::Primary = {
-    "(" Expr ")" => ast::Primary::Prnth(<>),
+    "(" <Expr> ")" => ast::Primary::Prnth(Box::new(<>)),
     Literal => ast::Primary::Literal(<>),
     "this" => ast::Primary::This,
     Ident => ast::Primary::Ident(<>),
@@ -219,25 +219,25 @@ For: ast::For = {
 
 While: ast::While = {
     "while" <expr:Expr> <blk:Block> => {
-        ast::While { expr, blk }
+        ast::While { expr: Box::new(expr), blk }
     }
 };
 
 Loop: ast::Loop = {
-    "loop" Block => {
+    "loop" <Block> => {
         ast::Loop { blk: <> }
     }  
 };
 
 If: ast::If = {
     "if" <cond:Expr> <blk:Block> <els:Else?> => {
-        ast::If { cond, blk, els }
+        ast::If { cond: Box::new(cond), blk, els }
     }  
 };
 
 Else: ast::Else = {
-    "else" Block => ast::Else::Block(<>),
-    "else" If => ast::Else::If(<>),
+    "else" <Block> => ast::Else::Block(<>),
+    "else" <If> => ast::Else::If(Box::new(<>)),
 };
 
 Literal: ast::Literal = {
@@ -250,7 +250,7 @@ Literal: ast::Literal = {
     Char => ast::Literal::Char(<>),
     Map => ast::Literal::Map(<>),
     Array => ast::Literal::Array(<>),
-    StructLit => ast::Literal::StructLit(<>),
+    StructLit => ast::Literal::Struct(<>),
     Closure => ast::Literal::Closure(<>),
 };
 
@@ -271,12 +271,12 @@ Char: char = {
 };
 
 Map: Vec<ast::MapField> = {
-    "map" "{" Comma<MapField> "}",
+    "map" "{" <Comma<MapField>> "}",
 };
 
 MapField: ast::MapField = {
     <key:Str> ":" <val:Expr> => {
-        ast::MapField { key, val }
+        ast::MapField { key, val: Box::new(val) }
     }  
 };
 
@@ -284,22 +284,22 @@ Array: Vec<ast::Expr> = {
     "[" <Comma<Expr>> "]",
 };
 
-StructLit: Vec<ast::StructField> = {
+StructLit: ast::StructLit = {
     "new" <ident:Ident> "{" <fields:Comma<StructField>> "}" => {
         ast::StructLit { ident, fields }
     }
+};
+
+StructField: ast::StructField = {
+    <ident:Ident> ":" <expr:Expr> => {
+        ast::StructField { ident, expr: Box::new(expr) }
+    }  
 };
 
 Closure: ast::Closure = {
     "|" <params:Comma<Ident>> "|" <blk:Block> => {
         ast::Closure { params, blk }
     } 
-};
-
-StructField: ast::StructField = {
-    <ident:Ident> ":" <expr:Expr> => {
-        ast::StructField { ident, expr }
-    }  
 };
 
 Ident: String = {
