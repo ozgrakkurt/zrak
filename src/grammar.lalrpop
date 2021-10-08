@@ -65,7 +65,7 @@ AssignOp: ast::AssignOp = {
 };
 
 Expr: ast::Expr = {
-    LogicOr => ast::Expr::LogicOr(<>),
+    LogicOr => ast::Expr{ or: <> },
 };
 
 LogicOr: ast::LogicOr = {
@@ -251,6 +251,7 @@ Literal: ast::Literal = {
     Map => ast::Literal::Map(<>),
     Array => ast::Literal::Array(<>),
     StructLit => ast::Literal::StructLit(<>),
+    Closure => ast::Literal::Closure(<>),
 };
 
 Int: i64 = {
@@ -287,6 +288,12 @@ StructLit: Vec<ast::StructField> = {
     "new" <ident:Ident> "{" <fields:Comma<StructField>> "}" => {
         ast::StructLit { ident, fields }
     }
+};
+
+Closure: ast::Closure = {
+    "|" <params:Comma<Ident>> "|" <blk:Block> => {
+        ast::Closure { params, blk }
+    } 
 };
 
 StructField: ast::StructField = {
