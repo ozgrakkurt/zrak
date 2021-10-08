@@ -1,0 +1,93 @@
+Program -> Decl*;
+Decl -> StructDecl
+        | FunDecl
+        | VarDecl
+        | Stmt;
+StructDecl -> "struct" IDENT "{" FunDecl* "}";
+FunDecl -> "fn" IDENT "(" (IDENT ",")* IDENT? ")" Block;
+VarDecl -> "let" "mut"? IDENT "=" Expr ";";
+Stmt -> "assgn" Assignment
+        | "return" Expr? ";"
+        | "break" Expr? ";"
+        | Expr ";";
+Assignment -> LCall Assigner Expr ";";
+LCall -> (IDENT|"self") LCallPart*;
+LCallPart -> "." IDENT
+            | "[" Expr "]";
+Assigner -> "="
+            | "+="
+            | "-="
+            | "*="
+            | "/="
+            | "%="
+            | "&="
+            | "|="
+            | "^="
+            | "<<="
+            | ">>=";
+Expr -> LogicOr;
+LogicOr -> LogicAnd
+            | LogicAnd "||" LogicOr;
+LogicAnd -> Cmp
+            | Cmp "&&" LogicAnd;
+Cmp -> BitOr
+        | BitOr CmpOp Cmp;
+CmpOp -> "=="
+        | "!="
+        | "<"
+        | ">"
+        | "<="
+        | ">=";
+BitOr -> BitXor
+        | BitXor "|" BitOr;
+BitXor -> BitAnd
+        | BitAnd "^" BitXor;
+BitAnd -> Shift
+        | Shift "&" BitAnd;
+Shift -> Term
+        | Term ShiftOp Shift;
+ShiftOp -> ">>"
+        | "<<";
+Term -> Factor
+        | Factor TermOp Term;
+TermOp -> "+"
+        | "-";
+Factor -> Unary
+        | Unary FactorOp Factor;
+FactorOp -> "*"
+            | "/"
+            | "%";
+Unary -> Call
+        | UnaryOp Unary;
+UnaryOp -> "-"
+            | "!";
+Call -> Primary CallPart*;
+CallPart -> "." IDENT
+            | "[" Expr "]"
+            | "(" (Expr ",")* Expr? ")"
+            | "?";
+Primary -> "self"
+            | "(" Expr ")"
+            | IDENT
+            | For
+            | While
+            | Loop
+            | If
+            | Closure
+            | Block
+            | Literal;
+For -> "for" IDENT "in" Expr Block;
+While -> "while" Expr Block;
+Loop -> "loop" Block;
+If -> "if" Expr Block ("else" Else)?;
+Else -> If
+        | Block;
+Closure -> "|" (IDENT ",")* IDENT? "|" Block;
+Block -> "{" Decl* Expr? "}";
+Literal -> "true"
+            | "false"
+            | "null"
+            | INT
+            | FLOAT
+            | CHAR
+            | STRING;
