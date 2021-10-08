@@ -1,10 +1,11 @@
+CommaList<T> -> (T ",")* T?;
 Program -> Decl*;
 Decl -> StructDecl
         | FunDecl
         | VarDecl
         | Stmt;
 StructDecl -> "struct" IDENT "{" FunDecl* "}";
-FunDecl -> "fn" IDENT "(" (IDENT ",")* IDENT? ")" Block;
+FunDecl -> "fn" IDENT "(" CommaList<IDENT> ")" Block;
 VarDecl -> "let" "mut"? IDENT "=" Expr ";";
 Stmt -> "assgn" Assignment
         | "return" Expr? ";"
@@ -64,7 +65,7 @@ UnaryOp -> "-"
 Call -> Primary CallPart*;
 CallPart -> "." IDENT
             | "[" Expr "]"
-            | "(" (Expr ",")* Expr? ")"
+            | "(" CommaList<Expr> ")"
             | "?";
 Primary -> "self"
             | "(" Expr ")"
@@ -82,7 +83,7 @@ Loop -> "loop" Block;
 If -> "if" Expr Block ("else" Else)?;
 Else -> If
         | Block;
-Closure -> "|" (IDENT ",")* IDENT? "|" Block;
+Closure -> "|" CommaList<IDENT> "|" Block;
 Block -> "{" Decl* Expr? "}";
 Literal -> "true"
             | "false"
@@ -90,4 +91,12 @@ Literal -> "true"
             | INT
             | FLOAT
             | CHAR
-            | STRING;
+            | STRING
+            | StructLit
+            | MapLit
+            | ArrayLit;
+StructLit -> "new" IDENT "{" CommaList<StructField> "}";
+StructField -> IDENT ":" Expr;
+MapLit -> "map" "{" CommaList<MapField> "}";
+MapField -> Expr ":" Expr;
+ArrayLit -> "[" CommaList<Expr> "]";
