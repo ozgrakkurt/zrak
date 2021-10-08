@@ -1,0 +1,11 @@
+[package]
+name = "zrak"
+version = "0.0.1"
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+lalrpop-util = "0.19.6"
+
+[build-dependencies]
+lalrpop = "0.19.6"
