@@ -2,18 +2,18 @@ use crate::ast;
 
 grammar;
 
-pub Program: () = {
+pub Program: ast::Program = {
     Decl* => ast::Program { decls: <> },  
 };
 
-Decl: () = {
+Decl: ast::Decl = {
     StructDecl => ast::Decl::Struct(<>),
     FunDecl => ast::Decl::Fun(<>),
     VarDecl => ast::Decl::Var(<>),
     Stmt => ast::Decl::Stmt(<>),  
 };
 
-StructDecl: () = {
+StructDecl: ast::StructDecl = {
     "struct" <ident:Ident> "{" <fns:FunDecl*> "}" => {
         ast::StructDecl {
             ident, fns,
@@ -21,7 +21,7 @@ StructDecl: () = {
     }
 };
 
-FunDecl: () = {
+FunDecl: ast::FunDecl = {
     "fn" <ident:Ident> "(" <params:Comma<Ident>> ")" <blk:Block> => {
         ast::FunDecl {
             ident, params, blk,
@@ -29,26 +29,26 @@ FunDecl: () = {
     }
 };
 
-VarDecl: () = {
+VarDecl: ast::VarDecl = {
     "let" <ident:Ident> "=" <expr:Expr> ";" => {
         ast::VarDecl { ident, expr }
     }  
 };
 
-Stmt: () = {
-    "return" Expr? ";" => ast::Stmt::Return(<>),
-    "break" Expr? ";" => ast::Stmt::Break(<>),
+Stmt: ast::Stmt = {
+    "return" <Expr?> ";" => ast::Stmt::Return(<>),
+    "break" <Expr?> ";" => ast::Stmt::Break(<>),
     Assignment => ast::Stmt::Assignment(<>),
-    Expr ";" => ast::Stmt::Expr(<>),
+    <Expr> ";" => ast::Stmt::Expr(<>),
 };
 
-Assignment: () = {
+Assignment: ast::Assignment = {
     <call:Call> AssignOp <expr:Expr> ";" => {
         ast::Assignment { call, expr }
     }
 };
 
-AssignOp: () = {
+AssignOp: ast::AssignOp = {
     "=" => ast::AssignOp::Assign,
     "+=" => ast::AssignOp::Add,
     "-=" => ast::AssignOp::Sub,
@@ -64,32 +64,32 @@ AssignOp: () = {
     "||=" => ast::AssignOp::LogicOr,
 };
 
-Expr: () = {
+Expr: ast::Expr = {
     LogicOr => ast::Expr::LogicOr(<>),
 };
 
-LogicOr: () = {
+LogicOr: ast::LogicOr = {
     LogicAnd => ast::LogicOr::A(<>),
     <left:LogicOr> "||" <right:LogicAnd> => {
         ast::LogicOr::B { left, right }
     }
 };
 
-LogicAnd: () = {
+LogicAnd: ast::LogicAnd = {
     Cmp => ast::LogicAnd::A(<>),
     <left:LogicAnd> "&&" <right:Cmp> => {
         ast::LogicAnd::B { left, right }
     }
 };
 
-Cmp: () = {
+Cmp: ast::Cmp = {
     BitOr => ast::BitOr::A(<>),
     <left:Cmp> <op:CmpOp> <right:BitOr> => {
         ast::Cmp::B { left, op, right }
     }  
 };
 
-CmpOp: () = {
+CmpOp: ast::CmpOp = {
     "==" => ast::CmpOp::Eq,
     "!=" => ast::CmpOp::NotEq,
     "<" => ast::CmpOp::Less,
@@ -98,72 +98,72 @@ CmpOp: () = {
     ">=" => ast::CmpOp::GrtEq,
 };
 
-BitOr: () = {
+BitOr: ast::BitOr = {
     BitXor => ast::BitOr::A(<>),
     <left:BitOr> "|" <right:BitXor> => {
         ast::BitOr::B { left, right }
     }
 };
 
-BitXor: () = {
+BitXor: ast::BitXor = {
     BitAnd => ast::BitXor::A(<>),
     <left:BitXor> "^" <right:BitAnd> => {
         ast::BitXor::B { left, right }
     }
 };
 
-BitAnd: () = {
+BitAnd: ast::BitAnd = {
     Shift => ast::BitAnd::A(<>),
     <left:BitAnd> "&" <right:Shift> => {
         ast::BitAnd::B { left, right }
     }
 };
 
-Shift: () = {
+Shift: ast::Shift = {
     Term => ast::Shift::A(<>),
     <left:Shift> <op:ShiftOp> <right:Term> => {
         ast::Shift::B { left, op, right }
     }
 };
 
-ShiftOp: () = {
+ShiftOp: ast::ShiftOp = {
     ">>" => ast::ShiftOp::Right,
     "<<" => ast::ShiftOp::Left,  
 };
 
-Term: () = {
+Term: ast::Term = {
     Factor => ast::Term::A(<>),
     <left:Term> <op:TermOp> <right:Factor> => {
         ast::Term::B { left, op, right }
     }
 };
 
-TermOp: () = {
+TermOp: ast::TermOp = {
     "+" => ast::TermOp::Add,
     "-" => ast::TermOp::Sub,  
 };
 
-Factor: () = {
+Factor: ast::Factor = {
     TypeCast => ast::Factor::A(<>),
     <left:Factor> <op:FactorOp> <right:TypeCast> => {
         ast::Factor::B { left, op, right }
     }
 };
 
-FactorOp: () = {
+FactorOp: ast::FactorOp = {
     "*" => ast::FactorOp::Mul,
     "/" => ast::FactorOp::Div,
     "%" => ast::FactorOp::Mod,  
 };
 
-TypeCast: () = {
+TypeCast: ast::TypeCast = {
     Unary => ast::TypeCast::A(<>),
     <left:TypeCast> "as" <type_name:TypeName> => {
         ast::TypeCast::B { left, type_name }
     }  
 };
 
-TypeName: () = {
+TypeName: ast::TypeName = {
     "bool" => ast::TypeName::Bool,
     "int" => ast::TypeName::Int,
     "float" => ast::TypeName::Float,
@@ -174,32 +174,32 @@ TypeName: () = {
     Ident => ast::TypeName::Ident(<>),
 };
 
-Unary: () = {
+Unary: ast::Unary = {
     Call => ast::Unary::A(<>),  
     <op:UnaryOp> <unary:Unary> => {
         ast::Unary { op, unary }
     }
 };
 
-UnaryOp: () = {
+UnaryOp: ast::UnaryOp = {
     "-" => ast::UnaryOp::Minus,
     "!" => ast::UnaryOp::Not,
 };
 
-Call: () = {
+Call: ast::Call = {
     <primary:Primary> <call:CallPart*> => {
         ast::Call { primary, call }
     }
 };
 
-CallPart: () = {
+CallPart: ast::CallPart = {
     "." Ident => ast::CallPart::Ident(<>),
     "[" Expr "]" => ast::CallPart::Brkts(<>),
     "(" Comma<Expr> ")" => ast::CallPart::FunCall(<>),
     "?" => ast::CallPart::QMark,
 };
 
-Primary: () = {
+Primary: ast::Primary = {
     "(" Expr ")" => ast::Primary::Prnth(<>),
     Literal => ast::Primary::Literal(<>),
     "this" => ast::Primary::This,
@@ -211,36 +211,36 @@ Primary: () = {
     Block => ast::Primary::Block(<>),
 };
 
-For: () = {
+For: ast::For = {
     "for" <ident:Ident> "in" <expr:Expr> <blk:Block> => {
         ast::For { ident, expr: Box::new(expr), blk }
     }
 };
 
-While: () = {
+While: ast::While = {
     "while" <expr:Expr> <blk:Block> => {
         ast::While { expr, blk }
     }
 };
 
-Loop: () = {
+Loop: ast::Loop = {
     "loop" Block => {
         ast::Loop { blk: <> }
     }  
 };
 
-If: () = {
+If: ast::If = {
     "if" <cond:Expr> <blk:Block> <els:Else?> => {
         ast::If { cond, blk, els }
     }  
 };
 
-Else: () = {
+Else: ast::Else = {
     "else" Block => ast::Else::Block(<>),
     "else" If => ast::Else::If(<>),
 };
 
-Literal: () = {
+Literal: ast::Literal = {
     "true" => ast::Literal::Bool(true),
     "false" => ast::Literal::Bool(false),
     "null" => ast::Literal::Null,
@@ -253,50 +253,50 @@ Literal: () = {
     StructLit => ast::Literal::StructLit(<>),
 };
 
-Int: () = {
+Int: i64 = {
     r"\d+" => <>.parse::<i64>().unwrap(),
 };
 
-Float: () = {
+Float: f64 = {
     r"\d+\.\d+" => <>.parse::<f64>().unwrap(),
 };
 
-Str: () = {
-    r#""(?:[^"\\]|\\.)*""#,
+Str: String = {
+    r#""(?:[^"\\]|\\.)*""# => <>.into(),
 };
 
-Char: () = {
-    r"'([^'\\\n]|\\.)'",
+Char: char = {
+    r"'([^'\\\n]|\\.)'" => <>.chars().next().unwrap(),
 };
 
-Map: () = {
+Map: Vec<ast::MapField> = {
     "map" "{" Comma<MapField> "}",
 };
 
-MapField: () = {
+MapField: ast::MapField = {
     <key:Str> ":" <val:Expr> => {
         ast::MapField { key, val }
     }  
 };
 
-Array: () = {
-    "[" Comma<Expr> "]",
+Array: Vec<ast::Expr> = {
+    "[" <Comma<Expr>> "]",
 };
 
-StructLit: () = {
+StructLit: Vec<ast::StructField> = {
     "new" <ident:Ident> "{" <fields:Comma<StructField>> "}" => {
         ast::StructLit { ident, fields }
     }
 };
 
-StructField: () = {
+StructField: ast::StructField = {
     <ident:Ident> ":" <expr:Expr> => {
         ast::StructField { ident, expr }
     }  
 };
 
-Ident: () = {
-    r"[_a-zA-Z][_a-zA-Z0-9]*",  
+Ident: String = {
+    r"[_a-zA-Z][_a-zA-Z0-9]*" => <>.into(),  
 };
 
 Comma<T>: Vec<T> = {
@@ -309,7 +309,7 @@ Comma<T>: Vec<T> = {
     }
 };
 
-Block: () = {
+Block: ast::Block = {
     "{" <decls:Decl*> <expr:Expr?> "}" => {
         ast::Block { decls, expr: Box::new(expr) }
     }

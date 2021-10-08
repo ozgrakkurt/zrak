@@ -33,7 +33,7 @@ pub enum Stmt {
 }
 
 pub struct Assignment {
-    lcall: LCall,
+    call: Call,
     expr: Expr,
 }
 
