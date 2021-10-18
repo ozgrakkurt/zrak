@@ -6,6 +6,7 @@ pub enum Token {
     Ident(IntStr),
     Literal(Literal),
     Delimiter(Delimiter),
+    Eof,
 }
 
 pub enum Literal {

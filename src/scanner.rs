@@ -19,6 +19,54 @@ impl<'a> Scanner<'a> {
         }
     }
 
+    pub fn get_next(&mut self) -> Result<Token, Error> {
+        let c = match self.skip_whitespace() {
+            Some(c) => c,
+            None => return Ok(Token::Eof),
+        };
+
+        let token = match c {
+            '?' => Token::Operator(Operator::QMark),
+            '=' => self.assign(),
+            c => todo!(),
+        };
+
+        Ok(token)
+    }
+
+    fn assign(&mut self) -> Token {
+        unimplemented!();
+    }
+
+    fn advance_if(&mut self, expected: char) -> Option<()> {
+        assert_ne!(expected, '\n');
+
+        if self.input.peek()?.1 == expected {
+            let (i, _) = self.input.next().unwrap();
+            self.pos.col += 1;
+            self.pos.idx = i;
+            return Some(());
+        }
+
+        None
+    }
+
+    fn advance(&mut self) -> Option<char> {
+        match self.input.next() {
+            Some((i, c)) => {
+                if c == '\n' {
+                    self.pos.line += 1;
+                    self.pos.col = 1;
+                } else {
+                    self.pos.col += 1;
+                }
+                self.pos.idx = i;
+                Some(c)
+            }
+            None => None,
+        }
+    }
+
     fn skip_whitespace(&mut self) -> Option<char> {
         for (i, c) in &mut self.input {
             if c == '\n' {
@@ -34,19 +82,6 @@ impl<'a> Scanner<'a> {
         }
 
         None
-    }
-}
-
-impl<'a> Iterator for Scanner<'a> {
-    type Item = Result<Token, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let token = match self.skip_whitespace()? {
-            '?' => Token::Operator(Operator::QMark),
-            c => todo!(),
-        };
-
-        Some(Ok(token))
     }
 }
 
