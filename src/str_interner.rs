@@ -3,7 +3,7 @@ use std::mem;
 
 pub struct Interner {
     map: HashMap<&'static str, usize>,
-    vec: Vec<String>,
+    vec: Vec<Option<String>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -23,15 +23,40 @@ impl Interner {
             return IntStr(idx);
         }
         let s = unsafe { mem::transmute::<&str, &'static str>(&string) };
-        let idx = self.vec.len();
-        self.vec.push(string);
+        let idx = unsafe { self.alloc(string) };
         self.map.insert(s, idx);
 
         IntStr(idx)
     }
 
     pub fn lookup(&self, s: IntStr) -> Option<&str> {
-        self.vec.get(s.0).map(String::as_str)
+        self.vec
+            .get(s.0)
+            .map(Option::as_ref)
+            .flatten()
+            .map(String::as_str)
+    }
+
+    pub fn delete(&mut self, s: IntStr) -> Option<()> {
+        if let Some(slot) = self.vec.get_mut(s.0) {
+            if let Some(s) = slot.take() {
+                self.map.remove(s.as_str()).unwrap();
+                return Some(());
+            }
+        }
+
+        None
+    }
+
+    unsafe fn alloc(&mut self, s: String) -> usize {
+        for (i, slot) in self.vec.iter_mut().enumerate() {
+            if slot.is_none() {
+                *slot = Some(s);
+                return i;
+            }
+        }
+        self.vec.push(Some(s));
+        self.vec.len() - 1
     }
 }
 
