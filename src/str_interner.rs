@@ -42,13 +42,13 @@ impl Interner {
             .map(String::as_str)
     }
 
-    pub fn delete(&mut self, s: IntStr) -> Option<()> {
+    pub fn remove(&mut self, s: IntStr) -> Option<String> {
         let idx = s.0;
         if let Some(slot) = self.vec.get_mut(idx) {
             if let Some(s) = slot.take() {
                 self.deleted.push(idx);
                 self.map.remove(s.as_str()).unwrap();
-                return Some(());
+                return Some(s);
             }
         }
 
@@ -72,9 +72,9 @@ mod tests {
     #[test]
     fn test_interner() {
         let mut interner = Interner::new();
-        let s1 = interner.intern("hello");
-        let s2 = interner.intern("hello");
-        let s3 = interner.intern("world");
+        let s1 = interner.intern_str("hello");
+        let s2 = interner.intern_str("hello");
+        let s3 = interner.intern_str("world");
         assert_eq!("hello", interner.lookup(s1).unwrap());
         assert_eq!("hello", interner.lookup(s2).unwrap());
         assert_eq!("world", interner.lookup(s3).unwrap());
