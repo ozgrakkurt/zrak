@@ -1,4 +1,4 @@
-use crate::str_interner::{IntMap, IntStr};
+use crate::str_interner::IntStr;
 
 pub enum Token {
     Assign(Assign),

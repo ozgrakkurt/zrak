@@ -4,8 +4,6 @@ Decl -> StructDecl
         | FunDecl
         | VarDecl
         | Stmt;
-StructDecl -> "struct" IDENT "{" FunDecl* "}";
-FunDecl -> "fn" IDENT "(" CommaList<IDENT> ")" Block;
 VarDecl -> "let" "mut"? IDENT "=" Expr ";";
 Stmt -> "assgn" Assignment
         | "return" Expr? ";"
