@@ -19,8 +19,7 @@ impl Interner {
         }
     }
 
-    pub fn intern<S: Into<String>>(&mut self, s: S) -> IntStr {
-        let string = s.into();
+    pub fn intern(&mut self, string: String) -> IntStr {
         if let Some(&idx) = self.map.get(string.as_str()) {
             return IntStr(idx);
         }
@@ -29,6 +28,10 @@ impl Interner {
         self.map.insert(s, idx);
 
         IntStr(idx)
+    }
+
+    pub fn intern_str(&mut self, s: &str) -> IntStr {
+        self.intern(s.into())
     }
 
     pub fn lookup(&self, s: IntStr) -> Option<&str> {
