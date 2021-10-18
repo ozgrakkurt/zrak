@@ -7,6 +7,7 @@ pub struct Interner {
     buf: Vec<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntStr(usize);
 
 impl Interner {
@@ -32,7 +33,26 @@ impl Interner {
         IntStr(idx)
     }
 
-    pub fn lookup(&self, idx: usize) -> Option<&str> {
-        self.vec.get(idx).copied()
+    pub fn lookup(&self, s: IntStr) -> Option<&str> {
+        self.vec.get(s.0).copied()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_interner() {
+        let mut interner = Interner::new();
+        let s1 = interner.intern("hello");
+        let s2 = interner.intern("hello");
+        let s3 = interner.intern("world");
+        assert_eq!("hello", interner.lookup(s1).unwrap());
+        assert_eq!("hello", interner.lookup(s2).unwrap());
+        assert_eq!("world", interner.lookup(s3).unwrap());
+        assert_eq!(s1, s2);
+        assert_ne!(s1, s3);
+        assert_ne!(s2, s3);
     }
 }
