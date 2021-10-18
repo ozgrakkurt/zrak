@@ -1,2 +1,4 @@
-mod str_interner;
-mod token;
+pub mod error;
+pub mod scanner;
+pub mod str_interner;
+pub mod token;

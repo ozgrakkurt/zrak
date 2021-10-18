@@ -38,6 +38,12 @@ impl Interner {
     }
 }
 
+impl Default for Interner {
+    fn default() -> Interner {
+        Interner::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
