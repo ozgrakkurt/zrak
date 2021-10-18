@@ -4,6 +4,7 @@ use std::mem;
 pub struct Interner {
     map: HashMap<&'static str, usize>,
     vec: Vec<Option<String>>,
+    deleted: Vec<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -14,6 +15,7 @@ impl Interner {
         Interner {
             map: HashMap::new(),
             vec: Vec::new(),
+            deleted: Vec::new(),
         }
     }
 
@@ -23,7 +25,7 @@ impl Interner {
             return IntStr(idx);
         }
         let s = unsafe { mem::transmute::<&str, &'static str>(&string) };
-        let idx = unsafe { self.alloc(string) };
+        let idx = self.alloc(string);
         self.map.insert(s, idx);
 
         IntStr(idx)
@@ -38,8 +40,10 @@ impl Interner {
     }
 
     pub fn delete(&mut self, s: IntStr) -> Option<()> {
-        if let Some(slot) = self.vec.get_mut(s.0) {
+        let idx = s.0;
+        if let Some(slot) = self.vec.get_mut(idx) {
             if let Some(s) = slot.take() {
+                self.deleted.push(idx);
                 self.map.remove(s.as_str()).unwrap();
                 return Some(());
             }
@@ -48,12 +52,10 @@ impl Interner {
         None
     }
 
-    unsafe fn alloc(&mut self, s: String) -> usize {
-        for (i, slot) in self.vec.iter_mut().enumerate() {
-            if slot.is_none() {
-                *slot = Some(s);
-                return i;
-            }
+    fn alloc(&mut self, s: String) -> usize {
+        if let Some(idx) = self.deleted.pop() {
+            self.vec[idx] = Some(s);
+            return idx;
         }
         self.vec.push(Some(s));
         self.vec.len() - 1
