@@ -11,6 +11,20 @@ pub struct Scanner<'a> {
     interner: &'a mut Interner,
 }
 
+impl<'a> Iterator for Scanner<'a> {
+    type Item = Result<Token, Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.get_next() {
+            Ok(token) => match token {
+                Token::Eof => None,
+                _ => Some(Ok(token)),
+            },
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
 impl<'a> Scanner<'a> {
     pub fn new(input: &'a str, interner: &'a mut Interner) -> Scanner<'a> {
         Scanner {
@@ -70,13 +84,13 @@ impl<'a> Scanner<'a> {
         let end = loop {
             let c = match self.input.peek() {
                 Some(c) => c.1,
-                None => break self.pos.idx,
+                None => break self.input_str.len(),
             };
 
             if c.is_ascii_alphanumeric() || c == '_' {
                 self.advance().unwrap();
             } else {
-                break self.pos.idx;
+                break self.pos.idx + c.len_utf8();
             }
         };
 
@@ -108,20 +122,20 @@ impl<'a> Scanner<'a> {
         let end = loop {
             let c = match self.input.peek() {
                 Some(c) => c.1,
-                None => break self.pos.idx,
+                None => break self.input_str.len(),
             };
 
             if c.is_ascii_digit() {
                 self.advance().unwrap();
             } else if c == '.' {
                 if had_dot {
-                    break self.pos.idx;
+                    break self.pos.idx + c.len_utf8();
                 } else {
                     had_dot = true;
                     self.advance().unwrap();
                 }
             } else {
-                break self.pos.idx;
+                break self.pos.idx + c.len_utf8();
             }
         };
 
@@ -403,5 +417,23 @@ impl Default for Pos {
             col: 1,
             idx: 0,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scan_text(text: &str) -> Result<Vec<Token>, Error> {
+        let mut interner = Interner::new();
+        let scanner = Scanner::new(text, &mut interner);
+        scanner.collect::<Result<Vec<_>, Error>>()
+    }
+
+    #[test]
+    fn test_bool() {
+        let tokens = scan_text("true false").unwrap();
+        assert_eq!(tokens[0], Token::Literal(Literal::Bool(true)),);
+        assert_eq!(tokens[1], Token::Literal(Literal::Bool(false)),);
     }
 }

@@ -1,5 +1,6 @@
 use crate::str_interner::IntStr;
 
+#[derive(Debug, PartialEq)]
 pub enum Token {
     Assign(Assign),
     Operator(Operator),
@@ -10,6 +11,7 @@ pub enum Token {
     Eof,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Literal {
     Bool(bool),
     Null,
@@ -19,6 +21,7 @@ pub enum Literal {
     Str(IntStr),
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Keyword {
     In,
     For,
@@ -34,6 +37,7 @@ pub enum Keyword {
     Break,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Delimiter {
     OpenBrkt,
     CloseBrkt,
@@ -45,6 +49,7 @@ pub enum Delimiter {
     Comma,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Assign {
     Assign,
     Add,
@@ -59,6 +64,7 @@ pub enum Assign {
     RightShift,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Operator {
     LogicOr,
     LogicAnd,
@@ -77,6 +83,7 @@ pub enum Operator {
     QMark,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum CmpOp {
     Eq,
     NotEq,

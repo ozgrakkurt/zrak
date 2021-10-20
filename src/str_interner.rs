@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::mem;
 
+#[derive(Debug)]
 pub struct Interner {
     map: HashMap<&'static str, usize>,
     vec: Vec<String>,
