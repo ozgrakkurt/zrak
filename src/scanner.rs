@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::str_interner::Interner;
 use crate::token::{Assign, CmpOp, Delimiter, Keyword, Literal, Operator, Token};
 use std::iter::Peekable;
-use std::str::CharIndices;
+use std::str::{CharIndices, FromStr};
 
 pub struct Scanner<'a> {
     input: Peekable<CharIndices<'a>>,
@@ -53,7 +53,7 @@ impl<'a> Scanner<'a> {
             '"' => self.string()?,
             _ => {
                 if c.is_ascii_digit() {
-                    self.number()
+                    self.number()?
                 } else if c.is_ascii_alphabetic() || c == '_' {
                     self.ident()
                 } else {
@@ -102,8 +102,42 @@ impl<'a> Scanner<'a> {
         }
     }
 
-    fn number(&mut self) -> Token {
-        todo!()
+    fn number(&mut self) -> Result<Token, Error> {
+        let mut had_dot = false;
+        let start = self.pos.idx;
+        let end = loop {
+            let c = match self.input.peek() {
+                Some(c) => c.1,
+                None => break self.pos.idx,
+            };
+
+            if c.is_ascii_digit() {
+                self.advance().unwrap();
+            } else if c == '.' {
+                if had_dot {
+                    break self.pos.idx;
+                } else {
+                    had_dot = true;
+                    self.advance().unwrap();
+                }
+            } else {
+                break self.pos.idx;
+            }
+        };
+
+        let num = &self.input_str[start..end];
+
+        let num = if had_dot {
+            Token::Literal(Literal::Float(
+                f64::from_str(num).map_err(Error::ParseFloatError)?,
+            ))
+        } else {
+            Token::Literal(Literal::Int(
+                i64::from_str(num).map_err(Error::ParseIntError)?,
+            ))
+        };
+
+        Ok(num)
     }
 
     fn string(&mut self) -> Result<Token, Error> {
