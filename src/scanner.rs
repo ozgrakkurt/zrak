@@ -190,7 +190,10 @@ impl<'a> Scanner<'a> {
                     '\\' => '\\',
                     _ => return Err(Error::InvalidEscapeSequence),
                 };
-                Ok(Token::Literal(Literal::Char(c)))
+                match self.advance() {
+                    Some(q) if q == '\'' => Ok(Token::Literal(Literal::Char(c))),
+                    _ => Err(Error::UnclosedCharLiteral),
+                }
             }
             '\'' => Err(Error::EmptyCharLiteral),
             _ => match self.advance() {
