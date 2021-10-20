@@ -141,11 +141,63 @@ impl<'a> Scanner<'a> {
     }
 
     fn string(&mut self) -> Result<Token, Error> {
-        todo!()
+        let mut buf = String::new();
+
+        loop {
+            let c = match self.advance() {
+                Some(c) => c,
+                None => return Err(Error::UnclosedStringLiteral),
+            };
+
+            match c {
+                '"' => {
+                    let s = self.interner.intern(buf);
+                    return Ok(Token::Literal(Literal::Str(s)));
+                }
+                '\\' => {
+                    let c = match match self.advance() {
+                        Some(c) => c,
+                        None => return Err(Error::InvalidEscapeSequence),
+                    } {
+                        'n' => '\n',
+                        't' => '\t',
+                        '"' => '"',
+                        '\\' => '\\',
+                        _ => return Err(Error::InvalidEscapeSequence),
+                    };
+                    buf.push(c);
+                }
+                _ => buf.push(c),
+            }
+        }
     }
 
     fn character(&mut self) -> Result<Token, Error> {
-        todo!()
+        let c = match self.advance() {
+            Some(c) => c,
+            None => return Err(Error::UnclosedCharLiteral),
+        };
+
+        match c {
+            '\\' => {
+                let c = match match self.advance() {
+                    Some(c) => c,
+                    None => return Err(Error::InvalidEscapeSequence),
+                } {
+                    'n' => '\n',
+                    't' => '\t',
+                    '\'' => '\'',
+                    '\\' => '\\',
+                    _ => return Err(Error::InvalidEscapeSequence),
+                };
+                Ok(Token::Literal(Literal::Char(c)))
+            }
+            '\'' => Err(Error::EmptyCharLiteral),
+            _ => match self.advance() {
+                Some(q) if q == '\'' => Ok(Token::Literal(Literal::Char(c))),
+                _ => Err(Error::UnclosedCharLiteral),
+            },
+        }
     }
 
     fn not(&mut self) -> Token {
