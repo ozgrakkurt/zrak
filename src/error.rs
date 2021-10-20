@@ -1,1 +1,4 @@
-pub enum Error {}
+#[derive(Debug)]
+pub enum Error {
+    UnexpectedCharacter(char),
+}

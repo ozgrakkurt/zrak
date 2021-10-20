@@ -6,6 +6,7 @@ pub enum Token {
     Ident(IntStr),
     Literal(Literal),
     Delimiter(Delimiter),
+    Keyword(Keyword),
     Eof,
 }
 
@@ -81,6 +82,6 @@ pub enum CmpOp {
     NotEq,
     Less,
     Greater,
-    LessEqual,
-    GreaterEqual,
+    LessEq,
+    GreaterEq,
 }

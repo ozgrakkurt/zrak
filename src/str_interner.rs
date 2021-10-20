@@ -17,24 +17,31 @@ impl Interner {
         }
     }
 
-    pub fn intern(&mut self, string: String) -> IntStr {
-        if let Some(&idx) = self.map.get(string.as_str()) {
+    pub fn intern(&mut self, s: String) -> IntStr {
+        if let Some(&idx) = self.map.get(s.as_str()) {
             return IntStr(idx);
         }
+        self.intern_impl(s)
+    }
+
+    pub fn intern_str(&mut self, s: &str) -> IntStr {
+        if let Some(&idx) = self.map.get(s) {
+            return IntStr(idx);
+        }
+        self.intern_impl(s.to_owned())
+    }
+
+    pub fn lookup(&self, s: IntStr) -> Option<&str> {
+        self.vec.get(s.0).map(String::as_str)
+    }
+
+    fn intern_impl(&mut self, string: String) -> IntStr {
         let s = unsafe { mem::transmute::<&str, &'static str>(&string) };
         let idx = self.vec.len();
         self.vec.push(string);
         self.map.insert(s, idx);
 
         IntStr(idx)
-    }
-
-    pub fn intern_str(&mut self, s: &str) -> IntStr {
-        self.intern(s.into())
-    }
-
-    pub fn lookup(&self, s: IntStr) -> Option<&str> {
-        self.vec.get(s.0).map(String::as_str)
     }
 }
 
