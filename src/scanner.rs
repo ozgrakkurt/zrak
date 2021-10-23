@@ -424,16 +424,50 @@ impl Default for Pos {
 mod tests {
     use super::*;
 
-    fn scan_text(text: &str) -> Result<Vec<Token>, Error> {
+    #[test]
+    fn test_bool() {
         let mut interner = Interner::new();
-        let scanner = Scanner::new(text, &mut interner);
-        scanner.collect::<Result<Vec<_>, Error>>()
+        let mut scanner = Scanner::new("true false", &mut interner);
+        assert_eq!(
+            scanner.next().unwrap().unwrap(),
+            Token::Literal(Literal::Bool(true))
+        );
+        assert_eq!(
+            scanner.next().unwrap().unwrap(),
+            Token::Literal(Literal::Bool(false))
+        );
     }
 
     #[test]
-    fn test_bool() {
-        let tokens = scan_text("true false").unwrap();
-        assert_eq!(tokens[0], Token::Literal(Literal::Bool(true)),);
-        assert_eq!(tokens[1], Token::Literal(Literal::Bool(false)),);
+    fn test_string() {
+        let mut interner = Interner::new();
+        let mut scanner = Scanner::new(
+            r#" "\n\t\"hello
+123" "#,
+            &mut interner,
+        );
+        let s = match scanner.next().unwrap().unwrap() {
+            Token::Literal(Literal::Str(s)) => interner.lookup(s).unwrap(),
+            _ => panic!("failed to parse string literal"),
+        };
+        assert_eq!(s, "\n\t\"hello\n123");
+    }
+
+    #[test]
+    fn test_number() {
+        let mut interner = Interner::new();
+        let mut scanner = Scanner::new("5.5. 38", &mut interner);
+        assert_eq!(
+            scanner.next().unwrap().unwrap(),
+            Token::Literal(Literal::Float(5.5))
+        );
+        assert_eq!(
+            scanner.next().unwrap().unwrap(),
+            Token::Delimiter(Delimiter::Dot)
+        );
+        assert_eq!(
+            scanner.next().unwrap().unwrap(),
+            Token::Literal(Literal::Int(38))
+        );
     }
 }
