@@ -9,20 +9,7 @@ pub struct Scanner<'a> {
     input_str: &'a str,
     pos: Pos,
     interner: &'a mut Interner,
-}
-
-impl<'a> Iterator for Scanner<'a> {
-    type Item = Result<Token, Error>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.get_next() {
-            Ok(token) => match token {
-                Token::Eof => None,
-                _ => Some(Ok(token)),
-            },
-            Err(e) => Some(Err(e)),
-        }
-    }
+    buf: Option<Token>,
 }
 
 impl<'a> Scanner<'a> {
@@ -32,10 +19,26 @@ impl<'a> Scanner<'a> {
             input_str: input,
             pos: Pos::default(),
             interner,
+            buf: None,
         }
     }
 
+    pub fn putback(&mut self, token: Token) {
+        assert!(self.buf.is_none());
+        self.buf = Some(token);
+    }
+
+    pub fn peek_next(&mut self) -> Result<Token, Error> {
+        let token = self.get_next()?;
+        self.buf = Some(token);
+        Ok(token)
+    }
+
     pub fn get_next(&mut self) -> Result<Token, Error> {
+        if let Some(token) = self.buf.take() {
+            return Ok(token);
+        }
+
         let c = match self.skip_whitespace() {
             Some(c) => c,
             None => return Ok(Token::Eof),
@@ -65,6 +68,8 @@ impl<'a> Scanner<'a> {
             ',' => Token::Delimiter(Delimiter::Comma),
             '\'' => self.character()?,
             '"' => self.string()?,
+            ':' => Token::Delimiter(Delimiter::Colon),
+            ';' => Token::Delimiter(Delimiter::Semicolon),
             _ => {
                 if c.is_ascii_digit() {
                     self.number()?
@@ -429,11 +434,11 @@ mod tests {
         let mut interner = Interner::new();
         let mut scanner = Scanner::new("true false", &mut interner);
         assert_eq!(
-            scanner.next().unwrap().unwrap(),
+            scanner.get_next().unwrap(),
             Token::Literal(Literal::Bool(true))
         );
         assert_eq!(
-            scanner.next().unwrap().unwrap(),
+            scanner.get_next().unwrap(),
             Token::Literal(Literal::Bool(false))
         );
     }
@@ -446,7 +451,7 @@ mod tests {
 123" "#,
             &mut interner,
         );
-        let s = match scanner.next().unwrap().unwrap() {
+        let s = match scanner.get_next().unwrap() {
             Token::Literal(Literal::Str(s)) => interner.lookup(s).unwrap(),
             _ => panic!("failed to parse string literal"),
         };
@@ -458,15 +463,15 @@ mod tests {
         let mut interner = Interner::new();
         let mut scanner = Scanner::new("5.5. 38", &mut interner);
         assert_eq!(
-            scanner.next().unwrap().unwrap(),
+            scanner.get_next().unwrap(),
             Token::Literal(Literal::Float(5.5))
         );
         assert_eq!(
-            scanner.next().unwrap().unwrap(),
+            scanner.get_next().unwrap(),
             Token::Delimiter(Delimiter::Dot)
         );
         assert_eq!(
-            scanner.next().unwrap().unwrap(),
+            scanner.get_next().unwrap(),
             Token::Literal(Literal::Int(38))
         );
     }

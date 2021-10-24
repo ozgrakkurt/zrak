@@ -30,8 +30,8 @@ pub struct VarDecl {
 }
 
 pub enum Stmt {
-    Return(Expr),
-    Break(Expr),
+    Return(Option<Expr>),
+    Break(Option<Expr>),
     Assignment(Assignment),
     Expr(Expr),
 }

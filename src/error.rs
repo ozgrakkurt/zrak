@@ -1,3 +1,5 @@
+use crate::str_interner::IntStr;
+use crate::token::Token;
 use std::num;
 use std::result::Result as StdResult;
 
@@ -10,6 +12,8 @@ pub enum Error {
     UnclosedCharLiteral,
     EmptyCharLiteral,
     InvalidEscapeSequence,
+    UnexpectedToken(Token),
+    MethodDefinedTwice(IntStr),
 }
 
 pub type Result<T> = StdResult<T, Error>;

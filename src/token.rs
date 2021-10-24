@@ -47,6 +47,8 @@ pub enum Delimiter {
     CloseCurly,
     Dot,
     Comma,
+    Colon,
+    Semicolon,
 }
 
 #[derive(Debug, PartialEq)]
