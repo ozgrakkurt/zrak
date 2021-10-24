@@ -2,7 +2,7 @@ use crate::ast;
 use crate::error::{Error, Result};
 use crate::scanner::Scanner;
 use crate::str_interner::IntStr;
-use crate::token::{Assign, Delimiter, Keyword, Operator, TermOp, Token};
+use crate::token::{Assign, Delimiter, Keyword, Literal, Operator, TermOp, Token};
 use std::collections::HashMap;
 
 pub struct Parser {}
@@ -376,6 +376,7 @@ impl<'a> ParseState<'a> {
                 }
                 Token::Delimiter(Delimiter::OpenBrkt) => {
                     let expr = self.expr()?;
+                    self.consume(Token::Delimiter(Delimiter::CloseBrkt))?;
                     tail.push(ast::CallPart::Brkts(Box::new(expr)))
                 }
                 Token::Delimiter(Delimiter::OpenPrnth) => {
@@ -511,7 +512,90 @@ impl<'a> ParseState<'a> {
     }
 
     fn literal(&mut self) -> Result<ast::Literal> {
-        todo!()
+        let lit = match self.scanner.get_next()? {
+            Token::Literal(Literal::Bool(b)) => ast::Literal::Bool(b),
+            Token::Literal(Literal::Null) => ast::Literal::Null,
+            Token::Literal(Literal::Int(i)) => ast::Literal::Int(i),
+            Token::Literal(Literal::Float(f)) => ast::Literal::Float(f),
+            Token::Literal(Literal::Char(c)) => ast::Literal::Char(c),
+            Token::Literal(Literal::Str(s)) => ast::Literal::Str(s),
+            Token::Keyword(Keyword::New) => ast::Literal::Struct(self.struct_lit()?),
+            Token::Keyword(Keyword::Map) => ast::Literal::Map(self.map_lit()?),
+            Token::Delimiter(Delimiter::OpenBrkt) => ast::Literal::Array(self.array_lit()?),
+            token => return Err(Error::UnexpectedToken(token)),
+        };
+
+        Ok(lit)
+    }
+
+    fn struct_lit(&mut self) -> Result<ast::StructLit> {
+        let ident = self.ident()?;
+        self.consume(Token::Delimiter(Delimiter::OpenCurly))?;
+        let mut fields = Vec::new();
+        loop {
+            match self.scanner.get_next()? {
+                Token::Ident(field_name) => {
+                    self.consume(Token::Delimiter(Delimiter::Colon))?;
+                    let field_value = self.expr()?;
+                    fields.push((field_name, field_value));
+                    match self.scanner.get_next()? {
+                        Token::Delimiter(Delimiter::Comma) => (),
+                        Token::Delimiter(Delimiter::CloseCurly) => break,
+                        token => return Err(Error::UnexpectedToken(token)),
+                    }
+                }
+                Token::Delimiter(Delimiter::CloseCurly) => break,
+                token => return Err(Error::UnexpectedToken(token)),
+            }
+        }
+
+        Ok(ast::StructLit { ident, fields })
+    }
+
+    fn map_lit(&mut self) -> Result<ast::MapLit> {
+        self.consume(Token::Delimiter(Delimiter::OpenCurly))?;
+
+        let mut fields = Vec::new();
+        loop {
+            match self.scanner.get_next()? {
+                Token::Delimiter(Delimiter::CloseCurly) => break,
+                token => {
+                    self.scanner.putback(token);
+                    let key = self.expr()?;
+                    self.consume(Token::Delimiter(Delimiter::Colon))?;
+                    let value = self.expr()?;
+                    fields.push((key, value));
+                    match self.scanner.get_next()? {
+                        Token::Delimiter(Delimiter::Comma) => (),
+                        Token::Delimiter(Delimiter::CloseCurly) => break,
+                        token => return Err(Error::UnexpectedToken(token)),
+                    }
+                }
+            }
+        }
+
+        Ok(ast::MapLit { fields })
+    }
+
+    fn array_lit(&mut self) -> Result<ast::ArrayLit> {
+        let mut elems = Vec::new();
+        loop {
+            match self.scanner.get_next()? {
+                Token::Delimiter(Delimiter::CloseBrkt) => break,
+                token => {
+                    self.scanner.putback(token);
+                    let expr = self.expr()?;
+                    elems.push(expr);
+                    match self.scanner.get_next()? {
+                        Token::Delimiter(Delimiter::Comma) => (),
+                        Token::Delimiter(Delimiter::CloseBrkt) => break,
+                        token => return Err(Error::UnexpectedToken(token)),
+                    }
+                }
+            }
+        }
+
+        Ok(ast::ArrayLit { elems })
     }
 
     fn block(&mut self) -> Result<ast::Block> {

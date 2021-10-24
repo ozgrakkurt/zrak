@@ -35,6 +35,8 @@ pub enum Keyword {
     SelfKw,
     Return,
     Break,
+    Map,
+    New,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

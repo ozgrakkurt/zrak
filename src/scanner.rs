@@ -119,6 +119,8 @@ impl<'a> Scanner<'a> {
             "self" => Token::Keyword(Keyword::SelfKw),
             "return" => Token::Keyword(Keyword::Return),
             "break" => Token::Keyword(Keyword::Break),
+            "map" => Token::Keyword(Keyword::Map),
+            "new" => Token::Keyword(Keyword::New),
             _ => Token::Ident(self.interner.intern_str(ident)),
         }
     }

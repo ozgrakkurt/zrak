@@ -211,7 +211,6 @@ pub struct StructLit {
 }
 
 pub struct MapLit {
-    pub ident: IntStr,
     pub fields: Vec<(Expr, Expr)>,
 }
 
