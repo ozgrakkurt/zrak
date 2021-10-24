@@ -14,6 +14,7 @@ pub enum Error {
     InvalidEscapeSequence,
     UnexpectedToken(Token),
     MethodDefinedTwice(IntStr),
+    UnassignableExpression,
 }
 
 pub type Result<T> = StdResult<T, Error>;

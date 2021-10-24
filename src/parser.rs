@@ -1,7 +1,7 @@
 use crate::ast;
 use crate::error::{Error, Result};
 use crate::scanner::Scanner;
-use crate::str_interner::{IntStr, Interner};
+use crate::str_interner::IntStr;
 use crate::token::{Assign, Delimiter, Keyword, Token};
 use std::collections::HashMap;
 
@@ -12,11 +12,8 @@ impl Parser {
         Parser {}
     }
 
-    pub fn parse(input: &str) -> Result<ast::Program> {
-        let mut interner = Interner::new();
-        let scanner = Scanner::new(input, &mut interner);
-        let mut ps = ParseState { scanner };
-        ps.program()
+    pub fn parse(scanner: Scanner) -> Result<ast::Program> {
+        ParseState { scanner }.program()
     }
 }
 
@@ -56,9 +53,10 @@ impl<'a> ParseState<'a> {
             match self.scanner.get_next()? {
                 Token::Keyword(Keyword::Fn) => {
                     let fun = self.fun_decl()?;
-                    if methods.insert(fun.ident, fun).is_some() {
+                    if methods.contains_key(&fun.ident) {
                         return Err(Error::MethodDefinedTwice(fun.ident));
                     }
+                    methods.insert(fun.ident, fun);
                 }
                 Token::Delimiter(Delimiter::CloseCurly) => {
                     break;
@@ -131,7 +129,7 @@ impl<'a> ParseState<'a> {
                     self.scanner.get_next()?;
                     Ok(ast::Stmt::Return(None))
                 } else {
-                    self.expr().map(ast::Stmt::Return)
+                    self.expr().map(|expr| ast::Stmt::Return(Some(expr)))
                 }
             }
             Token::Keyword(Keyword::Break) => {
@@ -140,24 +138,109 @@ impl<'a> ParseState<'a> {
                     self.scanner.get_next()?;
                     Ok(ast::Stmt::Break(None))
                 } else {
-                    self.expr().map(ast::Stmt::Break)
+                    self.expr().map(|expr| ast::Stmt::Break(Some(expr)))
                 }
             }
-            _ => {
+            _ => match self.assignment_or_expr()? {
+                Either::A(assignment) => Ok(ast::Stmt::Assignment(assignment)),
+                Either::B(expr) => {
+                    self.consume(Token::Delimiter(Delimiter::Semicolon))?;
+                    Ok(ast::Stmt::Expr(expr))
+                }
+            },
+        }
+    }
+
+    fn assignment_or_expr(&mut self) -> Result<Either<ast::Assignment, ast::Expr>> {
+        let expr = self.expr()?;
+        match self.scanner.get_next()? {
+            Token::Assign(assigner) => {
+                let lcall = Self::lcall(expr)?;
                 let expr = self.expr()?;
-                match self.scanner.get_next()? {
-                    Token::Assign(assigner) => {
-                        let lcall = self.lcall(expr)?;
-                        let expr = self.expr()?;
-                        self.consume(Token::Delimiter(Delimiter::Semicolon))?;
-                        Ok(ast::Stmt::Assignment(ast::Assignment {
-                            lcall,
-                            assigner,
-                            expr,
-                        }))
+                self.consume(Token::Delimiter(Delimiter::Semicolon))?;
+                Ok(Either::A(ast::Assignment {
+                    lcall,
+                    assigner,
+                    expr,
+                }))
+            }
+            token => {
+                self.scanner.putback(token);
+                Ok(Either::B(expr))
+            }
+        }
+    }
+
+    fn lcall(expr: ast::Expr) -> Result<ast::LCall> {
+        let call = match expr {
+            ast::Expr {
+                logic_or:
+                    ast::LogicOr::Next(ast::LogicAnd::Next(ast::Cmp::Next(ast::BitOr::Next(
+                        ast::BitXor::Next(ast::BitAnd::Next(ast::Shift::Next(ast::Term::Next(
+                            ast::Factor::Next(ast::Unary::Next(call)),
+                        )))),
+                    )))),
+            } => call,
+            _ => return Err(Error::UnassignableExpression),
+        };
+
+        let head = match call.head {
+            ast::Primary::Ident(ident) => ast::LCallHead::Ident(ident),
+            ast::Primary::SelfKw => ast::LCallHead::SelfKw,
+            _ => return Err(Error::UnassignableExpression),
+        };
+
+        let tail = call
+            .tail
+            .into_iter()
+            .map(|part| match part {
+                ast::CallPart::Dot(ident) => Ok(ast::LCallPart::Dot(ident)),
+                ast::CallPart::Brkts(expr) => Ok(ast::LCallPart::Brkts(expr)),
+                _ => Err(Error::UnassignableExpression),
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(ast::LCall { head, tail })
+    }
+
+    fn expr(&mut self) -> Result<ast::Expr> {
+        todo!()
+    }
+
+    fn block(&mut self) -> Result<ast::Block> {
+        self.consume(Token::Delimiter(Delimiter::OpenCurly))?;
+
+        let mut decls = Vec::new();
+
+        loop {
+            let token = self.scanner.get_next()?;
+            match token {
+                Token::Keyword(Keyword::Struct)
+                | Token::Keyword(Keyword::Fn)
+                | Token::Keyword(Keyword::Let)
+                | Token::Keyword(Keyword::Return)
+                | Token::Keyword(Keyword::Break) => {
+                    self.scanner.putback(token);
+                    decls.push(self.decl()?);
+                }
+                Token::Delimiter(Delimiter::CloseCurly) => {
+                    return Ok(ast::Block { decls, expr: None });
+                }
+                token => {
+                    self.scanner.putback(token);
+
+                    match self.assignment_or_expr()? {
+                        Either::A(assignment) => {
+                            decls.push(ast::Decl::Stmt(ast::Stmt::Assignment(assignment)));
+                        }
+                        Either::B(expr) => {
+                            self.consume(Token::Delimiter(Delimiter::CloseCurly))?;
+                            return Ok(ast::Block {
+                                decls,
+                                expr: Some(Box::new(expr)),
+                            });
+                        }
                     }
-                    Token::Delimiter(Delimiter::Semicolon) => Ok(ast::Stmt::Expr(expr)),
-                    token => return Err(Error::UnexpectedToken(token)),
                 }
             }
         }
@@ -184,4 +267,9 @@ impl Default for Parser {
     fn default() -> Parser {
         Parser::new()
     }
+}
+
+enum Either<A, B> {
+    A(A),
+    B(B),
 }
