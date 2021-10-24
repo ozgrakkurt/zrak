@@ -4,11 +4,12 @@ Decl -> StructDecl
         | FunDecl
         | VarDecl
         | Stmt;
+StructDecl -> "struct" IDENT "{" FunDecl* "}";
+FunDecl -> "fn" IDENT "(" CommaList<IDENT> ")" Block;
 VarDecl -> "let" "mut"? IDENT "=" Expr ";";
-Stmt -> "assgn" Assignment
-        | "return" Expr? ";"
+Stmt -> "return" Expr? ";"
         | "break" Expr? ";"
-        | Expr ";";
+        | Assignment | Expr ";";
 Assignment -> LCall Assigner Expr ";";
 LCall -> (IDENT|"self") LCallPart*;
 LCallPart -> "." IDENT
