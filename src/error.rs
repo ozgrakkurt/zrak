@@ -1,4 +1,5 @@
 use std::num;
+use std::result::Result as StdResult;
 
 #[derive(Debug)]
 pub enum Error {
@@ -10,3 +11,5 @@ pub enum Error {
     EmptyCharLiteral,
     InvalidEscapeSequence,
 }
+
+pub type Result<T> = StdResult<T, Error>;
