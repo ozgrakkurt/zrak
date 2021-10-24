@@ -12,7 +12,7 @@ impl Parser {
         Parser {}
     }
 
-    pub fn parse(scanner: Scanner) -> Result<ast::Program> {
+    pub fn parse(&self, scanner: Scanner) -> Result<ast::Program> {
         ParseState { scanner }.program()
     }
 }
@@ -395,7 +395,7 @@ impl<'a> ParseState<'a> {
     }
 
     fn expr_list(&mut self, sentinel: Token) -> Result<Vec<ast::Expr>> {
-        let mut args = Vec::new();
+        let mut expr_list = Vec::new();
 
         loop {
             match self.scanner.get_next()? {
@@ -404,7 +404,7 @@ impl<'a> ParseState<'a> {
                 }
                 token => {
                     self.scanner.putback(token);
-                    args.push(self.expr()?);
+                    expr_list.push(self.expr()?);
                     match self.scanner.get_next()? {
                         Token::Delimiter(Delimiter::Comma) => (),
                         t if t == sentinel => break,
@@ -414,7 +414,7 @@ impl<'a> ParseState<'a> {
             }
         }
 
-        Ok(args)
+        Ok(expr_list)
     }
 
     fn primary(&mut self) -> Result<ast::Primary> {

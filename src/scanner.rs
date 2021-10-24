@@ -63,7 +63,7 @@ impl<'a> Scanner<'a> {
             '[' => Token::Delimiter(Delimiter::OpenBrkt),
             ']' => Token::Delimiter(Delimiter::CloseBrkt),
             '(' => Token::Delimiter(Delimiter::OpenPrnth),
-            ')' => Token::Delimiter(Delimiter::CloseBrkt),
+            ')' => Token::Delimiter(Delimiter::ClosePrnth),
             '{' => Token::Delimiter(Delimiter::OpenCurly),
             '}' => Token::Delimiter(Delimiter::CloseCurly),
             '.' => Token::Delimiter(Delimiter::Dot),
