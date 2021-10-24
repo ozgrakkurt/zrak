@@ -74,15 +74,30 @@ pub enum Operator {
     BitOr,
     BitXor,
     BitAnd,
-    LeftShift,
-    RightShift,
+    Shift(ShiftOp),
+    Term(TermOp),
+    Factor(FactorOp),
+    Not,
+    QMark,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum TermOp {
     Add,
     Sub,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum FactorOp {
     Mul,
     Div,
     Mod,
-    Not,
-    QMark,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ShiftOp {
+    Left,
+    Right,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

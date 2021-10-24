@@ -2,7 +2,7 @@ use crate::ast;
 use crate::error::{Error, Result};
 use crate::scanner::Scanner;
 use crate::str_interner::IntStr;
-use crate::token::{Assign, Delimiter, Keyword, Token};
+use crate::token::{Assign, Delimiter, Keyword, Operator, TermOp, Token};
 use std::collections::HashMap;
 
 pub struct Parser {}
@@ -204,6 +204,313 @@ impl<'a> ParseState<'a> {
     }
 
     fn expr(&mut self) -> Result<ast::Expr> {
+        self.logic_or().map(|logic_or| ast::Expr { logic_or })
+    }
+
+    fn logic_or(&mut self) -> Result<ast::LogicOr> {
+        let left = self.logic_and()?;
+        let logic_or = match self.scanner.get_next()? {
+            Token::Operator(Operator::LogicOr) => {
+                ast::LogicOr::Current(left, Box::new(self.logic_or()?))
+            }
+            token => {
+                self.scanner.putback(token);
+                ast::LogicOr::Next(left)
+            }
+        };
+
+        Ok(logic_or)
+    }
+
+    fn logic_and(&mut self) -> Result<ast::LogicAnd> {
+        let left = self.cmp()?;
+        let logic_and = match self.scanner.get_next()? {
+            Token::Operator(Operator::LogicAnd) => {
+                ast::LogicAnd::Current(left, Box::new(self.logic_and()?))
+            }
+            token => {
+                self.scanner.putback(token);
+                ast::LogicAnd::Next(left)
+            }
+        };
+
+        Ok(logic_and)
+    }
+
+    fn cmp(&mut self) -> Result<ast::Cmp> {
+        let left = self.bit_or()?;
+        let cmp = match self.scanner.get_next()? {
+            Token::Operator(Operator::Cmp(op)) => ast::Cmp::Current {
+                left,
+                op,
+                cmp: Box::new(self.cmp()?),
+            },
+            token => {
+                self.scanner.putback(token);
+                ast::Cmp::Next(left)
+            }
+        };
+
+        Ok(cmp)
+    }
+
+    fn bit_or(&mut self) -> Result<ast::BitOr> {
+        let left = self.bit_xor()?;
+        let bit_or = match self.scanner.get_next()? {
+            Token::Operator(Operator::BitOr) => ast::BitOr::Current(left, Box::new(self.bit_or()?)),
+            token => {
+                self.scanner.putback(token);
+                ast::BitOr::Next(left)
+            }
+        };
+
+        Ok(bit_or)
+    }
+
+    fn bit_xor(&mut self) -> Result<ast::BitXor> {
+        let left = self.bit_and()?;
+        let bit_xor = match self.scanner.get_next()? {
+            Token::Operator(Operator::BitXor) => {
+                ast::BitXor::Current(left, Box::new(self.bit_xor()?))
+            }
+            token => {
+                self.scanner.putback(token);
+                ast::BitXor::Next(left)
+            }
+        };
+
+        Ok(bit_xor)
+    }
+
+    fn bit_and(&mut self) -> Result<ast::BitAnd> {
+        let left = self.shift()?;
+        let bit_and = match self.scanner.get_next()? {
+            Token::Operator(Operator::BitAnd) => {
+                ast::BitAnd::Current(left, Box::new(self.bit_and()?))
+            }
+            token => {
+                self.scanner.putback(token);
+                ast::BitAnd::Next(left)
+            }
+        };
+
+        Ok(bit_and)
+    }
+
+    fn shift(&mut self) -> Result<ast::Shift> {
+        let left = self.term()?;
+        let shift = match self.scanner.get_next()? {
+            Token::Operator(Operator::Shift(op)) => ast::Shift::Current {
+                left,
+                op,
+                shift: Box::new(self.shift()?),
+            },
+            token => {
+                self.scanner.putback(token);
+                ast::Shift::Next(left)
+            }
+        };
+
+        Ok(shift)
+    }
+
+    fn term(&mut self) -> Result<ast::Term> {
+        let left = self.factor()?;
+        let term = match self.scanner.get_next()? {
+            Token::Operator(Operator::Term(op)) => ast::Term::Current {
+                left,
+                op,
+                term: Box::new(self.term()?),
+            },
+            token => {
+                self.scanner.putback(token);
+                ast::Term::Next(left)
+            }
+        };
+
+        Ok(term)
+    }
+
+    fn factor(&mut self) -> Result<ast::Factor> {
+        let left = self.unary()?;
+        let term = match self.scanner.get_next()? {
+            Token::Operator(Operator::Factor(op)) => ast::Factor::Current {
+                left,
+                op,
+                factor: Box::new(self.factor()?),
+            },
+            token => {
+                self.scanner.putback(token);
+                ast::Factor::Next(left)
+            }
+        };
+
+        Ok(term)
+    }
+
+    fn unary(&mut self) -> Result<ast::Unary> {
+        let op = match self.scanner.get_next()? {
+            Token::Operator(Operator::Not) => ast::UnaryOp::Not,
+            Token::Operator(Operator::Term(TermOp::Sub)) => ast::UnaryOp::Negate,
+            token => {
+                self.scanner.putback(token);
+                return Ok(ast::Unary::Next(self.call()?));
+            }
+        };
+
+        Ok(ast::Unary::Current {
+            op,
+            unary: Box::new(self.unary()?),
+        })
+    }
+
+    fn call(&mut self) -> Result<ast::Call> {
+        let head = self.primary()?;
+        let mut tail = Vec::new();
+
+        loop {
+            match self.scanner.get_next()? {
+                Token::Delimiter(Delimiter::Dot) => {
+                    let ident = self.ident()?;
+                    tail.push(ast::CallPart::Dot(ident))
+                }
+                Token::Delimiter(Delimiter::OpenBrkt) => {
+                    let expr = self.expr()?;
+                    tail.push(ast::CallPart::Brkts(Box::new(expr)))
+                }
+                Token::Delimiter(Delimiter::OpenPrnth) => {
+                    let args = self.expr_list(Token::Delimiter(Delimiter::ClosePrnth))?;
+                    tail.push(ast::CallPart::FunCall(args))
+                }
+                Token::Operator(Operator::QMark) => tail.push(ast::CallPart::QMark),
+                token => {
+                    self.scanner.putback(token);
+                    break;
+                }
+            }
+        }
+
+        Ok(ast::Call { head, tail })
+    }
+
+    fn expr_list(&mut self, sentinel: Token) -> Result<Vec<ast::Expr>> {
+        let mut args = Vec::new();
+
+        loop {
+            match self.scanner.get_next()? {
+                t if t == sentinel => {
+                    break;
+                }
+                token => {
+                    self.scanner.putback(token);
+                    args.push(self.expr()?);
+                    match self.scanner.get_next()? {
+                        Token::Delimiter(Delimiter::Comma) => (),
+                        t if t == sentinel => break,
+                        token => return Err(Error::UnexpectedToken(token)),
+                    }
+                }
+            }
+        }
+
+        Ok(args)
+    }
+
+    fn primary(&mut self) -> Result<ast::Primary> {
+        let primary = match self.scanner.get_next()? {
+            Token::Keyword(Keyword::SelfKw) => ast::Primary::SelfKw,
+            Token::Delimiter(Delimiter::OpenPrnth) => {
+                let expr = self.expr()?;
+                self.consume(Token::Delimiter(Delimiter::ClosePrnth))?;
+                ast::Primary::Prnth(Box::new(expr))
+            }
+            Token::Ident(ident) => ast::Primary::Ident(ident),
+            Token::Keyword(Keyword::For) => ast::Primary::For(self.for_loop()?),
+            Token::Keyword(Keyword::While) => ast::Primary::While(self.while_loop()?),
+            Token::Keyword(Keyword::Loop) => ast::Primary::Loop(self.loop_loop()?),
+            Token::Keyword(Keyword::If) => ast::Primary::If(self.if_expr()?),
+            Token::Operator(Operator::BitOr) => ast::Primary::Closure(self.closure()?),
+            Token::Delimiter(Delimiter::OpenCurly) => {
+                self.scanner.putback(Token::Delimiter(Delimiter::OpenCurly));
+                ast::Primary::Block(self.block()?)
+            }
+            token => {
+                self.scanner.putback(token);
+                ast::Primary::Literal(self.literal()?)
+            }
+        };
+
+        Ok(primary)
+    }
+
+    fn for_loop(&mut self) -> Result<ast::For> {
+        let ident = self.ident()?;
+        self.consume(Token::Keyword(Keyword::In))?;
+        let expr = self.expr()?;
+        let block = self.block()?;
+
+        Ok(ast::For {
+            ident,
+            expr: Box::new(expr),
+            block,
+        })
+    }
+
+    fn while_loop(&mut self) -> Result<ast::While> {
+        let cond = self.expr()?;
+        let block = self.block()?;
+
+        Ok(ast::While {
+            cond: Box::new(cond),
+            block,
+        })
+    }
+
+    fn loop_loop(&mut self) -> Result<ast::Loop> {
+        let block = self.block()?;
+
+        Ok(ast::Loop { block })
+    }
+
+    fn if_expr(&mut self) -> Result<ast::If> {
+        let cond = self.expr()?;
+        let block = self.block()?;
+
+        let els = match self.scanner.get_next()? {
+            Token::Keyword(Keyword::Else) => Some(self.els()?),
+            token => {
+                self.scanner.putback(token);
+                None
+            }
+        };
+
+        Ok(ast::If {
+            cond: Box::new(cond),
+            block,
+            els,
+        })
+    }
+
+    fn els(&mut self) -> Result<ast::Else> {
+        let els = match self.scanner.get_next()? {
+            Token::Keyword(Keyword::If) => ast::Else::If(Box::new(self.if_expr()?)),
+            token => {
+                self.scanner.putback(token);
+                ast::Else::Block(self.block()?)
+            }
+        };
+
+        Ok(els)
+    }
+
+    fn closure(&mut self) -> Result<ast::Closure> {
+        let params = self.params()?;
+        self.consume(Token::Operator(Operator::BitOr))?;
+        let block = self.block()?;
+        Ok(ast::Closure { params, block })
+    }
+
+    fn literal(&mut self) -> Result<ast::Literal> {
         todo!()
     }
 

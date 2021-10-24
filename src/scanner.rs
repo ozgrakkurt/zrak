@@ -1,6 +1,8 @@
 use crate::error::Error;
 use crate::str_interner::Interner;
-use crate::token::{Assign, CmpOp, Delimiter, Keyword, Literal, Operator, Token};
+use crate::token::{
+    Assign, CmpOp, Delimiter, FactorOp, Keyword, Literal, Operator, ShiftOp, TermOp, Token,
+};
 use std::iter::Peekable;
 use std::str::{CharIndices, FromStr};
 
@@ -244,7 +246,7 @@ impl<'a> Scanner<'a> {
                 if self.advance_if('=').is_some() {
                     Token::Assign(Assign::RightShift)
                 } else {
-                    Token::Operator(Operator::RightShift)
+                    Token::Operator(Operator::Shift(ShiftOp::Right))
                 }
             }
             _ => Token::Operator(Operator::Cmp(CmpOp::Greater)),
@@ -265,7 +267,7 @@ impl<'a> Scanner<'a> {
                 if self.advance_if('=').is_some() {
                     Token::Assign(Assign::LeftShift)
                 } else {
-                    Token::Operator(Operator::LeftShift)
+                    Token::Operator(Operator::Shift(ShiftOp::Left))
                 }
             }
             _ => Token::Operator(Operator::Cmp(CmpOp::Less)),
@@ -318,7 +320,7 @@ impl<'a> Scanner<'a> {
         if self.advance_if('=').is_some() {
             Token::Assign(Assign::Mod)
         } else {
-            Token::Operator(Operator::Mod)
+            Token::Operator(Operator::Factor(FactorOp::Mod))
         }
     }
 
@@ -326,7 +328,7 @@ impl<'a> Scanner<'a> {
         if self.advance_if('=').is_some() {
             Token::Assign(Assign::Div)
         } else {
-            Token::Operator(Operator::Div)
+            Token::Operator(Operator::Factor(FactorOp::Div))
         }
     }
 
@@ -334,7 +336,7 @@ impl<'a> Scanner<'a> {
         if self.advance_if('=').is_some() {
             Token::Assign(Assign::Mul)
         } else {
-            Token::Operator(Operator::Mul)
+            Token::Operator(Operator::Factor(FactorOp::Mul))
         }
     }
 
@@ -342,7 +344,7 @@ impl<'a> Scanner<'a> {
         if self.advance_if('=').is_some() {
             Token::Assign(Assign::Sub)
         } else {
-            Token::Operator(Operator::Sub)
+            Token::Operator(Operator::Term(TermOp::Sub))
         }
     }
 
@@ -350,7 +352,7 @@ impl<'a> Scanner<'a> {
         if self.advance_if('=').is_some() {
             Token::Assign(Assign::Add)
         } else {
-            Token::Operator(Operator::Add)
+            Token::Operator(Operator::Term(TermOp::Add))
         }
     }
 

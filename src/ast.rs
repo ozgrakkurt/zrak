@@ -1,5 +1,5 @@
 use crate::str_interner::IntStr;
-use crate::token::{Assign, CmpOp};
+use crate::token::{Assign, CmpOp, FactorOp, ShiftOp, TermOp};
 use std::collections::HashMap;
 
 pub struct Program {
@@ -104,11 +104,6 @@ pub enum Shift {
     },
 }
 
-pub enum ShiftOp {
-    Left,
-    Right,
-}
-
 pub enum Term {
     Next(Factor),
     Current {
@@ -118,11 +113,6 @@ pub enum Term {
     },
 }
 
-pub enum TermOp {
-    Add,
-    Sub,
-}
-
 pub enum Factor {
     Next(Unary),
     Current {
@@ -130,12 +120,6 @@ pub enum Factor {
         op: FactorOp,
         factor: Box<Factor>,
     },
-}
-
-pub enum FactorOp {
-    Mul,
-    Div,
-    Mod,
 }
 
 pub enum Unary {
