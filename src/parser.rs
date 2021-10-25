@@ -5,24 +5,16 @@ use crate::str_interner::IntStr;
 use crate::token::{Assign, Delimiter, Keyword, Literal, Operator, TermOp, Token};
 use std::collections::HashMap;
 
-pub struct Parser {}
-
-impl Parser {
-    pub fn new() -> Parser {
-        Parser {}
-    }
-
-    pub fn parse(&self, scanner: Scanner) -> Result<ast::Program> {
-        ParseState { scanner }.program()
-    }
-}
-
-struct ParseState<'a> {
+pub struct Parser<'a> {
     scanner: Scanner<'a>,
 }
 
-impl<'a> ParseState<'a> {
-    fn program(&mut self) -> Result<ast::Program> {
+impl<'a> Parser<'a> {
+    pub fn new(scanner: Scanner<'a>) -> Parser<'a> {
+        Parser { scanner }
+    }
+
+    pub fn program(&mut self) -> Result<ast::Program> {
         let mut decls = Vec::new();
         while self.scanner.peek_next()? != Token::Eof {
             decls.push(self.decl()?);
@@ -656,12 +648,6 @@ impl<'a> ParseState<'a> {
         } else {
             Err(Error::UnexpectedToken(token))
         }
-    }
-}
-
-impl Default for Parser {
-    fn default() -> Parser {
-        Parser::new()
     }
 }
 
