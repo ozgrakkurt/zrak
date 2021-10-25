@@ -624,13 +624,18 @@ impl<'a> ParseState<'a> {
                         Either::A(assignment) => {
                             decls.push(ast::Decl::Stmt(ast::Stmt::Assignment(assignment)));
                         }
-                        Either::B(expr) => {
-                            self.consume(Token::Delimiter(Delimiter::CloseCurly))?;
-                            return Ok(ast::Block {
-                                decls,
-                                expr: Some(Box::new(expr)),
-                            });
-                        }
+                        Either::B(expr) => match self.scanner.get_next()? {
+                            Token::Delimiter(Delimiter::CloseCurly) => {
+                                return Ok(ast::Block {
+                                    decls,
+                                    expr: Some(Box::new(expr)),
+                                });
+                            }
+                            Token::Delimiter(Delimiter::Semicolon) => {
+                                decls.push(ast::Decl::Stmt(ast::Stmt::Expr(expr)));
+                            }
+                            token => return Err(Error::UnexpectedToken(token)),
+                        },
                     }
                 }
             }
