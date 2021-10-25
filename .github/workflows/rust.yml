@@ -10,9 +10,30 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  test:
 
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        rust:
+          - stable
+          - beta
+          - nightly
+
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macOS-latest
+
+        include:
+          - rust: stable
+            features: "--features full"
+          - rust: beta
+            features: "--features full"
+          - rust: nightly
+            features: "--features full,nightly"
+            benches: true
+
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v2
