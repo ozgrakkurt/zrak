@@ -24,12 +24,47 @@ impl<'a> Parser<'a> {
 
     fn decl(&mut self) -> Result<ast::Decl> {
         match self.scanner.get_next()? {
+            Token::Keyword(Keyword::Use) => self.use_decl().map(ast::Decl::Use),
+            Token::Keyword(Keyword::Mod) => self.mod_decl().map(ast::Decl::Mod),
             Token::Keyword(Keyword::Struct) => self.struct_decl().map(ast::Decl::Struct),
             Token::Keyword(Keyword::Fn) => self.fun_decl().map(ast::Decl::Fun),
             Token::Keyword(Keyword::Let) => self.var_decl().map(ast::Decl::Var),
             token => {
                 self.scanner.putback(token);
                 self.stmt().map(ast::Decl::Stmt)
+            }
+        }
+    }
+
+    fn use_decl(&mut self) -> Result<ast::UseDecl> {
+        let mut path = vec![self.ident()?];
+
+        loop {
+            match self.scanner.get_next()? {
+                Token::Delimiter(Delimiter::Doublecolon) => {
+                    path.push(self.ident()?);
+                }
+                Token::Delimiter(Delimiter::Semicolon) => return Ok(ast::UseDecl { path }),
+                token => return Err(Error::UnexpectedToken(token)),
+            }
+        }
+    }
+
+    fn mod_decl(&mut self) -> Result<ast::ModDecl> {
+        let ident = self.ident()?;
+
+        self.consume(Token::Delimiter(Delimiter::OpenCurly))?;
+
+        let mut decls = Vec::new();
+        loop {
+            match self.scanner.get_next()? {
+                Token::Delimiter(Delimiter::CloseCurly) => {
+                    return Ok(ast::ModDecl { ident, decls })
+                }
+                token => {
+                    self.scanner.putback(token);
+                    decls.push(self.decl()?);
+                }
             }
         }
     }
@@ -598,7 +633,9 @@ impl<'a> Parser<'a> {
         loop {
             let token = self.scanner.get_next()?;
             match token {
-                Token::Keyword(Keyword::Struct)
+                Token::Keyword(Keyword::Use)
+                | Token::Keyword(Keyword::Mod)
+                | Token::Keyword(Keyword::Struct)
                 | Token::Keyword(Keyword::Fn)
                 | Token::Keyword(Keyword::Let)
                 | Token::Keyword(Keyword::Return)

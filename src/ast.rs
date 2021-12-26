@@ -9,10 +9,23 @@ pub struct Program {
 
 #[derive(Debug)]
 pub enum Decl {
+    Use(UseDecl),
+    Mod(ModDecl),
     Struct(StructDecl),
     Fun(FunDecl),
     Var(VarDecl),
     Stmt(Stmt),
+}
+
+#[derive(Debug)]
+pub struct UseDecl {
+    pub path: Vec<IntStr>,
+}
+
+#[derive(Debug)]
+pub struct ModDecl {
+    pub ident: IntStr,
+    pub decls: Vec<Decl>,
 }
 
 #[derive(Debug)]

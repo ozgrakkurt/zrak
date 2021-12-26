@@ -1,9 +1,13 @@
 CommaList<T> -> (T ",")* T?;
 Program -> Decl*;
-Decl -> StructDecl
+Decl -> UseDecl
+        | ModDecl
+        | StructDecl
         | FunDecl
         | VarDecl
         | Stmt;
+UseDecl -> "use" IDENT ("::" IDENT)* ";";
+ModDecl -> "mod" IDENT "{" Decl* "}";
 StructDecl -> "struct" IDENT "{" FunDecl* "}";
 FunDecl -> "fn" IDENT "(" CommaList<IDENT> ")" Block;
 VarDecl -> "let" IDENT "=" Expr ";";

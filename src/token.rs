@@ -37,6 +37,8 @@ pub enum Keyword {
     Break,
     Map,
     New,
+    Use,
+    Mod,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -51,6 +53,7 @@ pub enum Delimiter {
     Comma,
     Colon,
     Semicolon,
+    Doublecolon,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

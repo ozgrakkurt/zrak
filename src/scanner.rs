@@ -70,7 +70,7 @@ impl<'a> Scanner<'a> {
             ',' => Token::Delimiter(Delimiter::Comma),
             '\'' => self.character()?,
             '"' => self.string()?,
-            ':' => Token::Delimiter(Delimiter::Colon),
+            ':' => self.colon(),
             ';' => Token::Delimiter(Delimiter::Semicolon),
             _ => {
                 if c.is_ascii_digit() {
@@ -84,6 +84,14 @@ impl<'a> Scanner<'a> {
         };
 
         Ok(token)
+    }
+
+    fn colon(&mut self) -> Token {
+        if self.advance_if(':').is_some() {
+            Token::Delimiter(Delimiter::Doublecolon)
+        } else {
+            Token::Delimiter(Delimiter::Colon)
+        }
     }
 
     fn ident(&mut self) -> Token {
@@ -121,6 +129,8 @@ impl<'a> Scanner<'a> {
             "break" => Token::Keyword(Keyword::Break),
             "map" => Token::Keyword(Keyword::Map),
             "new" => Token::Keyword(Keyword::New),
+            "use" => Token::Keyword(Keyword::Use),
+            "mod" => Token::Keyword(Keyword::Mod),
             _ => Token::Ident(self.interner.intern_str(ident)),
         }
     }
